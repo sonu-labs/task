@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskHub Global - Post Task • Earn • Complete</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/remixicon/4.2.0/remixicon.min.css">
+<script>
+tailwind.config={
+  theme:{
+    extend:{
+      fontFamily:{outfit:['Outfit'], jakarta:['Plus Jakarta Sans']},
+      colors:{dark:'#0a0f1e', card:'#111827', primary:'#7c3aed', accent:'#06b6d4'}
+    }
+  }
+}
+</script>
+<style>
+*{font-family:'Plus Jakarta Sans',sans-serif}
+h1,h2,h3,.outfit{font-family:'Outfit',sans-serif}
+.glass{backdrop-filter:blur(16px); background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.1)}
+.card-hover{transition:all 0.3s cubic-bezier(0.4,0,0.2,1)}
+.card-hover:hover{transform:translateY(-4px); box-shadow:0 20px 40px rgba(124,58,237,0.15); border-color:rgba(124,58,237,0.3)}
+.scrollbar-hide::-webkit-scrollbar{display:none}
+.custom-scroll::-webkit-scrollbar{width:6px}
+.custom-scroll::-webkit-scrollbar-thumb{background:#7c3aed33; border-radius:10px}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.float{animation:float 3s ease-in-out infinite}
+</style>
+</head>
+<body class="bg-[#070b18] text-white min-h-screen selection:bg-violet-600 selection:text-white">
+<!-- NAV -->
+<nav class="sticky top-0 z-40 bg-[#070b18]/80 backdrop-blur-xl border-b border-white/5">
+  <div class="max-w-[1280px] mx-auto px-4 md:px-6 h-[64px] flex items-center justify-between gap-4">
+    <div class="flex items-center gap-8">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-cyan-400 flex items-center justify-center font-black text-white outfit text-lg">T</div>
+        <div>
+          <div class="outfit font-bold text-[18px] leading-none">TaskHub<span class="text-violet-400">.Global</span></div>
+          <div class="text-[10px] tracking-[0.15em] text-white/50 font-semibold -mt-0.5">POST • DO • EARN</div>
+        </div>
+      </div>
+      <div class="hidden lg:flex items-center gap-1 bg-white/5 rounded-full p-1">
+        <button onclick="setStatusFilter('All')" data-status="All" class="status-chip active px-4 py-1.5 rounded-full text-sm font-semibold bg-white text-black">All Tasks</button>
+        <button onclick="setStatusFilter('Open')" data-status="Open" class="status-chip px-4 py-1.5 rounded-full text-sm font-medium text-white/70 hover:text-white">Open</button>
+        <button onclick="setStatusFilter('In Progress')" data-status="In Progress" class="status-chip px-4 py-1.5 rounded-full text-sm font-medium text-white/70 hover:text-white">In Progress</button>
+        <button onclick="setStatusFilter('Completed')" data-status="Completed" class="status-chip px-4 py-1.5 rounded-full text-sm font-medium text-white/70 hover:text-white">Done</button>
+      </div>
+    </div>
+
+    <div class="flex-1 max-w-[420px] hidden md:block">
+      <div class="relative">
+        <i class="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40"></i>
+        <input id="searchInput" oninput="debouncedSearch()" placeholder="Search tasks, skills, categories... (e.g. logo, python)" class="w-full bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2.5 text-sm placeholder:text-white/40 focus:outline-none focus:border-violet-500/50 focus:bg-white/[0.07]">
+        <span class="absolute right-2 top-1/2 -translate-y-1/2 hidden xl:flex items-center gap-1 text-[10px] bg-white/10 px-2 py-1 rounded-full text-white/50">⌘ K</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2 md:gap-3">
+      <div class="hidden md:flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-500 text-black px-3 py-1.5 rounded-full font-bold text-sm">
+        <i class="ri-coins-line"></i><span id="userCoins">₹5,600</span>
+      </div>
+      <button onclick="openPostModal()" class="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 px-4 md:px-5 py-2.5 rounded-full font-bold text-sm flex items-center gap-2 shadow-lg shadow-violet-600/20">
+        <i class="ri-add-line text-lg"></i><span class="hidden sm:inline">Post Task</span><span class="sm:hidden">Post</span>
+      </button>
+      <div class="relative">
+        <button onclick="toggleProfile()" class="w-9 h-9 rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 flex items-center justify-center font-bold text-sm outfit">AU</button>
+        <div id="profileDropdown" class="hidden absolute right-0 top-12 w-72 bg-[#111827] border border-white/10 rounded-2xl p-4 shadow-2xl z-50">
+          <div class="flex items-center gap-3 mb-4">
+            <div class="w-12 h-12 rounded-full bg-gradient-to-br from-fuchsia-500 to-violet-600 flex items-center justify-center font-bold">AU</div>
+            <div>
+              <div class="font-bold">Aap (Demo User)</div>
+              <div class="text-xs text-white/60">Level 4 • Trusted Worker</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center text-xs mb-4">
+            <div class="bg-white/5 rounded-xl p-2"><div class="font-bold text-lg">18</div><div class="text-white/50">Completed</div></div>
+            <div class="bg-white/5 rounded-xl p-2"><div class="font-bold text-lg">4.9★</div><div class="text-white/50">Rating</div></div>
+            <div class="bg-white/5 rounded-xl p-2"><div class="font-bold text-lg">₹5.6k</div><div class="text-white/50">Earned</div></div>
+          </div>
+          <div class="space-y-1">
+            <button onclick="showMyTasks('posted')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 flex items-center gap-3 text-sm"><i class="ri-file-list-line text-violet-400"></i> My Posted Tasks</button>
+            <button onclick="showMyTasks('claimed')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 flex items-center gap-3 text-sm"><i class="ri-hand-heart-line text-cyan-400"></i> My Claimed Tasks</button>
+            <button onclick="showMyTasks('submitted')" class="w-full text-left px-3 py-2.5 rounded-xl hover:bg-white/5 flex items-center gap-3 text-sm"><i class="ri-time-line text-amber-400"></i> Pending Review</button>
+          </div>
+          <div class="mt-3 pt-3 border-t border-white/5 flex gap-2">
+            <input id="userNameInput" value="Aap (Demo User)" class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm" placeholder="Your name">
+            <button onclick="updateUser()" class="bg-violet-600 px-4 rounded-xl text-sm font-bold">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- mobile search -->
+  <div class="md:hidden px-4 pb-3">
+    <div class="relative">
+      <i class="ri-search-line absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40"></i>
+      <input id="searchInputMobile" oninput="document.getElementById('searchInput').value=this.value; debouncedSearch()" placeholder="Search tasks..." class="w-full bg-white/5 border border-white/10 rounded-full pl-10 pr-4 py-2.5 text-sm placeholder:text-white/40 focus:outline-none focus:border-violet-500/50">
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="max-w-[1280px] mx-auto px-4 md:px-6 mt-6">
+  <div class="rounded-[28px] bg-gradient-to-br from-violet-600 via-indigo-600 to-cyan-500 p-[1px]">
+    <div class="rounded-[27px] bg-gradient-to-br from-[#0f1220] via-[#0f1220] to-[#0a1a2e] p-6 md:p-8 relative overflow-hidden">
+      <div class="absolute -right-20 -top-20 w-[400px] h-[400px] bg-violet-600/20 blur-[80px] rounded-full"></div>
+      <div class="absolute -left-20 -bottom-20 w-[300px] h-[300px] bg-cyan-400/10 blur-[70px] rounded-full"></div>
+      <div class="relative grid lg:grid-cols-[1.2fr_0.8fr] gap-8 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 bg-white/10 border border-white/10 rounded-full px-3 py-1.5 text-xs font-semibold mb-4">
+            <span class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span> LIVE • 1,247 workers online • Global marketplace
+          </div>
+          <h1 class="outfit font-extrabold text-[30px] md:text-[42px] leading-[0.95] tracking-tight">
+            Post any task.<br>
+            <span class="bg-gradient-to-r from-violet-400 to-cyan-300 bg-clip-text text-transparent">Earn by doing.</span><br>
+            <span class="text-white/90 text-[22px] md:text-[28px] font-semibold">Sab kuch ek jagah.</span>
+          </h1>
+          <p class="text-white/60 mt-3 text-sm md:text-[15px] leading-relaxed max-w-[560px]">Design, Coding, Writing, Testing — koi bhi kaam post karo ya dusron ka kaam karke paisa kamao. Har task ke saath <b class="text-white">step-by-step guide</b> aur <b class="text-white">screenshot proof</b> system.</p>
+          <div class="flex flex-wrap gap-3 mt-6">
+            <button onclick="openPostModal()" class="bg-white text-black px-6 py-3 rounded-full font-bold text-sm flex items-center gap-2 hover:bg-white/90"><i class="ri-rocket-line"></i> Post Your First Task — Free</button>
+            <button onclick="document.getElementById('taskGrid').scrollIntoView({behavior:'smooth'})" class="bg-white/10 border border-white/20 px-6 py-3 rounded-full font-semibold text-sm flex items-center gap-2 hover:bg-white/15"><i class="ri-compass-3-line"></i> Explore Tasks</button>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-6">
+            <span class="text-xs text-white/40 font-semibold tracking-wide">POPULAR:</span>
+            <span class="text-xs bg-white/10 px-3 py-1 rounded-full border border-white/10">Logo Design ₹500</span>
+            <span class="text-xs bg-white/10 px-3 py-1 rounded-full border border-white/10">Python Script ₹800</span>
+            <span class="text-xs bg-white/10 px-3 py-1 rounded-full border border-white/10">Data Entry ₹600</span>
+          </div>
+        </div>
+        <!-- stats cards -->
+        <div class="grid grid-cols-2 gap-3">
+          <div class="bg-white text-black rounded-[20px] p-5 relative overflow-hidden">
+            <div class="text-xs font-bold tracking-widest text-black/40">TOTAL TASKS</div>
+            <div class="outfit font-extrabold text-3xl mt-1" id="statTotal">8</div>
+            <div class="text-xs font-semibold text-emerald-600 mt-1 flex items-center gap-1"><i class="ri-arrow-up-line"></i> +12 today</div>
+            <i class="ri-stack-line absolute right-4 bottom-4 text-4xl text-black/5"></i>
+          </div>
+          <div class="bg-gradient-to-br from-violet-600 to-indigo-600 rounded-[20px] p-5 text-white relative overflow-hidden">
+            <div class="text-xs font-bold tracking-widest text-white/70">REWARDS PAID</div>
+            <div class="outfit font-extrabold text-3xl mt-1" id="statReward">₹5,600</div>
+            <div class="text-xs font-medium text-white/80 mt-1">To workers globally</div>
+            <i class="ri-coins-line absolute right-4 bottom-4 text-4xl text-white/10"></i>
+          </div>
+          <div class="bg-[#1a1f35] border border-white/10 rounded-[20px] p-5">
+            <div class="text-xs font-bold tracking-widest text-white/40">ACTIVE WORKERS</div>
+            <div class="outfit font-extrabold text-3xl mt-1">1,247</div>
+            <div class="flex -space-x-2 mt-2">
+              <img src="https://i.pravatar.cc/40?img=1" class="w-7 h-7 rounded-full border-2 border-[#1a1f35]">
+              <img src="https://i.pravatar.cc/40?img=2" class="w-7 h-7 rounded-full border-2 border-[#1a1f35]">
+              <img src="https://i.pravatar.cc/40?img=3" class="w-7 h-7 rounded-full border-2 border-[#1a1f35]">
+              <div class="w-7 h-7 rounded-full bg-violet-600 border-2 border-[#1a1f35] flex items-center justify-center text-[10px] font-bold">+1k</div>
+            </div>
+          </div>
+          <div class="bg-[#1a1f35] border border-white/10 rounded-[20px] p-5">
+            <div class="text-xs font-bold tracking-widest text-white/40">AVG. COMPLETION</div>
+            <div class="outfit font-extrabold text-3xl mt-1">4.2h</div>
+            <div class="text-xs text-white/50 mt-1">Lightning fast delivery</div>
+            <div class="w-full bg-white/10 h-1.5 rounded-full mt-3"><div class="h-full w-[82%] bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-full"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CATEGORY FILTER + CONTROLS -->
+<section class="max-w-[1280px] mx-auto px-4 md:px-6 mt-6 flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+  <div class="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1 w-full lg:w-auto">
+    <button onclick="setCategory('All')" data-cat="All" class="cat-btn active whitespace-nowrap px-4 py-2 rounded-full bg-white text-black font-bold text-sm">All</button>
+    <button onclick="setCategory('Design')" data-cat="Design" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">🎨 Design</button>
+    <button onclick="setCategory('Coding')" data-cat="Coding" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">💻 Coding</button>
+    <button onclick="setCategory('Writing')" data-cat="Writing" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">✍️ Writing</button>
+    <button onclick="setCategory('Marketing')" data-cat="Marketing" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">📢 Marketing</button>
+    <button onclick="setCategory('Video')" data-cat="Video" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">🎬 Video</button>
+    <button onclick="setCategory('Data Entry')" data-cat="Data Entry" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">📊 Data Entry</button>
+    <button onclick="setCategory('Testing')" data-cat="Testing" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">🧪 Testing</button>
+    <button onclick="setCategory('AI Training')" data-cat="AI Training" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">🤖 AI Training</button>
+    <button onclick="setCategory('Translation')" data-cat="Translation" class="cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10">🌐 Translation</button>
+  </div>
+  <div class="flex items-center gap-2 w-full lg:w-auto justify-between">
+    <div class="flex items-center gap-2 text-xs text-white/50">
+      <span id="taskCount" class="bg-white/10 px-3 py-1.5 rounded-full font-semibold text-white">8 tasks</span>
+      <span class="hidden sm:inline">• Guide + Screenshot proof har task me</span>
+    </div>
+    <select id="sortSelect" onchange="loadTasks()" class="bg-white/5 border border-white/10 rounded-full px-3 py-2 text-sm">
+      <option value="newest" class="text-black">Newest first</option>
+      <option value="reward_high" class="text-black">Highest reward</option>
+      <option value="reward_low" class="text-black">Lowest reward</option>
+      <option value="deadline" class="text-black">Ending soon</option>
+    </select>
+  </div>
+</section>
+
+<!-- MAIN LAYOUT -->
+<section class="max-w-[1280px] mx-auto px-4 md:px-6 mt-6 grid lg:grid-cols-[1fr_340px] gap-6 pb-10">
+  <!-- TASK GRID -->
+  <div>
+    <div id="taskGrid" class="grid md:grid-cols-2 gap-4"></div>
+    <div id="emptyState" class="hidden text-center py-16 bg-white/5 border border-white/10 rounded-2xl">
+      <div class="text-5xl mb-3">🔍</div>
+      <div class="font-bold text-lg">Koi task nahi mila</div>
+      <div class="text-sm text-white/50 mt-1">Filter change karo ya naya task post karo</div>
+      <button onclick="setCategory('All'); setStatusFilter('All'); document.getElementById('searchInput').value=''; loadTasks()" class="mt-4 bg-violet-600 px-5 py-2 rounded-full font-bold text-sm">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="space-y-4">
+    <!-- My Work -->
+    <div class="bg-[#111827] border border-white/10 rounded-2xl p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="outfit font-bold text-[16px] flex items-center gap-2"><i class="ri-dashboard-line text-violet-400"></i> My Workspace</h3>
+        <span class="text-xs bg-violet-600 px-2 py-1 rounded-full font-bold">LIVE</span>
+      </div>
+      <div class="grid grid-cols-3 gap-2 mb-4">
+        <button onclick="showMyTasks('posted')" class="bg-white/5 hover:bg-white/10 rounded-xl p-3 text-center">
+          <div class="font-extrabold text-lg outfit" id="myPostedCount">1</div><div class="text-[11px] text-white/50 font-semibold">POSTED</div>
+        </button>
+        <button onclick="showMyTasks('claimed')" class="bg-violet-600/20 border border-violet-500/20 rounded-xl p-3 text-center">
+          <div class="font-extrabold text-lg outfit" id="myClaimedCount">0</div><div class="text-[11px] text-violet-300 font-semibold">CLAIMED</div>
+        </button>
+        <button onclick="showMyTasks('completed')" class="bg-emerald-500/15 border border-emerald-500/20 rounded-xl p-3 text-center">
+          <div class="font-extrabold text-lg outfit" id="myCompletedCount">1</div><div class="text-[11px] text-emerald-300 font-semibold">EARNED</div>
+        </button>
+      </div>
+      <div id="myTasksList" class="space-y-2 max-h-[320px] overflow-auto custom-scroll pr-1"></div>
+      <button onclick="openPostModal()" class="w-full mt-4 bg-gradient-to-r from-violet-600 to-indigo-600 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2"><i class="ri-add-line"></i> Post New Task</button>
+      <div class="mt-3 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex gap-3">
+        <i class="ri-lightbulb-line text-amber-400 text-lg"></i>
+        <div class="text-xs leading-relaxed"><b class="text-amber-300">Tip:</b> Har task me Guide hota hai — steps follow karo, screenshot lo, submit karo, turant approval!</div>
+      </div>
+    </div>
+
+    <!-- Leaderboard -->
+    <div class="bg-[#111827] border border-white/10 rounded-2xl p-5">
+      <h3 class="outfit font-bold flex items-center gap-2 mb-4"><i class="ri-trophy-line text-amber-400"></i> Top Workers — This Week</h3>
+      <div id="leaderboard" class="space-y-2.5"></div>
+      <div class="mt-4 bg-white/5 rounded-xl p-3 flex items-center justify-between">
+        <div class="text-xs"><div class="font-bold">Your Rank #2</div><div class="text-white/50">18 tasks • ₹5,600 earned</div></div>
+        <div class="w-8 h-8 rounded-full bg-gradient-to-br from-violet-600 to-fuchsia-500 flex items-center justify-center font-bold text-xs">AU</div>
+      </div>
+    </div>
+
+    <!-- How it works -->
+    <div class="bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl p-5 text-white">
+      <h3 class="outfit font-bold text-lg mb-3">Kaise kaam karta hai?</h3>
+      <div class="space-y-3 text-sm">
+        <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-white text-violet-700 flex items-center justify-center font-bold text-xs shrink-0">1</span><div><b>Post karo</b> — Title, description, guide, reward set karo</div></div>
+        <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-white text-violet-700 flex items-center justify-center font-bold text-xs shrink-0">2</span><div><b>Claim karo</b> — Koi bhi open task 1-click me claim karo</div></div>
+        <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-white text-violet-700 flex items-center justify-center font-bold text-xs shrink-0">3</span><div><b>Guide follow + Screenshot</b> — Steps follow karo aur proof upload karo</div></div>
+        <div class="flex gap-3"><span class="w-7 h-7 rounded-full bg-white text-violet-700 flex items-center justify-center font-bold text-xs shrink-0">4</span><div><b>Verify & Earn</b> — Poster approve karega, coins turant milenge</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TASK DETAIL MODAL -->
+<div id="taskModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 overflow-auto p-4">
+  <div class="max-w-[760px] mx-auto bg-[#0f1220] border border-white/10 rounded-[24px] overflow-hidden my-6">
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<!-- POST TASK MODAL -->
+<div id="postModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 overflow-auto p-4">
+  <div class="max-w-[640px] mx-auto bg-[#0f1220] border border-white/10 rounded-[24px] my-6 overflow-hidden">
+    <div class="p-6 border-b border-white/10 flex items-center justify-between">
+      <div>
+        <h3 class="outfit font-bold text-xl">Post New Task</h3>
+        <p class="text-sm text-white/50">Koi bhi kaam — global workers turant dekhenge</p>
+      </div>
+      <button onclick="closePostModal()" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"><i class="ri-close-line text-xl"></i></button>
+    </div>
+    <form id="postForm" onsubmit="submitPost(event)" class="p-6 space-y-4">
+      <div>
+        <label class="text-xs font-bold tracking-widest text-white/60">TASK TITLE *</label>
+        <input required id="p_title" placeholder="e.g. Logo Design for Coffee Shop" class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-violet-500">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">CATEGORY</label>
+          <select id="p_category" class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm">
+            <option>Design</option><option>Coding</option><option>Writing</option><option>Marketing</option><option>Video</option><option>Data Entry</option><option>Research</option><option>Testing</option><option>AI Training</option><option>Translation</option><option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">REWARD (₹)</label>
+          <input required id="p_reward" type="number" min="50" value="300" class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-violet-500">
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">DIFFICULTY</label>
+          <select id="p_difficulty" class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm">
+            <option>Easy</option><option selected>Medium</option><option>Hard</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs font-bold tracking-widest text-white/60">DEADLINE</label>
+          <input id="p_deadline" type="date" class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-bold tracking-widest text-white/60">DESCRIPTION *</label>
+        <textarea required id="p_desc" rows="3" placeholder="Task ke baare me detail me likho — kya chahiye, kaise chahiye..." class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-violet-500"></textarea>
+      </div>
+      <div>
+        <label class="text-xs font-bold tracking-widest text-white/60">GUIDE — STEP BY STEP (har line ek step)</label>
+        <textarea id="p_guide" rows="4" placeholder="1. Brief padho&#10;2. Reference dekho&#10;3. Design banao&#10;4. Export + screenshot lo" class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-violet-500">Brief padho aur requirements samjho
+Reference designs dekho
+Apna kaam banao (tool jo bhi ho)
+Final output export karo
+Screenshot leke submit karo</textarea>
+        <div class="text-xs text-white/40 mt-1">Worker isi guide ko follow karega — clear steps likho</div>
+      </div>
+      <div>
+        <label class="text-xs font-bold tracking-widest text-white/60">TAGS (comma se alag)</label>
+        <input id="p_tags" placeholder="logo, figma, branding" class="w-full mt-1.5 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm">
+      </div>
+      <button type="submit" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 text-[15px]"><i class="ri-send-plane-line"></i> Publish Task Globally</button>
+      <div class="text-center text-xs text-white/40">Post karte hi sab workers ko dikhega • 0 fees</div>
+    </form>
+  </div>
+</div>
+
+<!-- MY TASKS DRAWER -->
+<div id="myDrawer" class="fixed inset-0 hidden z-50">
+  <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="closeDrawer()"></div>
+  <div class="absolute right-0 top-0 h-full w-[420px] max-w-[92vw] bg-[#0f1220] border-l border-white/10 overflow-auto">
+    <div class="sticky top-0 bg-[#0f1220] p-5 border-b border-white/10 flex items-center justify-between">
+      <h3 class="outfit font-bold text-lg" id="drawerTitle">My Tasks</h3>
+      <button onclick="closeDrawer()" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"><i class="ri-close-line"></i></button>
+    </div>
+    <div id="drawerContent" class="p-4 space-y-3"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white text-black px-5 py-3 rounded-full font-semibold text-sm shadow-2xl hidden z-[60] items-center gap-2"></div>
+
+<script>
+let tasks=[], filtered=[], currentCat='All', currentStatus='All', user={id:'u1', name:'Aap (Demo User)', avatar:'AU'};
+let myTasksFilter='all';
+
+function toast(msg, ok=true){
+  const t=document.getElementById('toast');
+  t.innerHTML=(ok?'<i class="ri-checkbox-circle-line text-emerald-600 text-lg"></i>':'<i class="ri-error-warning-line text-red-500 text-lg"></i>')+msg;
+  t.classList.remove('hidden'); t.classList.add('flex');
+  setTimeout(()=>{t.classList.add('hidden'); t.classList.remove('flex')},3000);
+}
+
+async function loadStats(){
+  const r=await fetch('/api/stats'); const s=await r.json();
+  document.getElementById('statTotal').textContent=s.total;
+  document.getElementById('statReward').textContent='₹'+s.totalReward.toLocaleString('en-IN');
+  document.getElementById('taskCount').textContent=s.total+' tasks';
+}
+
+async function loadTasks(){
+  const q=document.getElementById('searchInput').value;
+  const params=new URLSearchParams({category:currentCat, status:currentStatus, search:q});
+  const r=await fetch('/api/tasks?'+params); tasks=await r.json();
+  // sort client side for reward/deadline
+  const sort=document.getElementById('sortSelect').value;
+  if(sort==='reward_high') tasks.sort((a,b)=>b.reward-a.reward);
+  if(sort==='reward_low') tasks.sort((a,b)=>a.reward-b.reward);
+  if(sort==='deadline') tasks.sort((a,b)=>new Date(a.deadline)-new Date(b.deadline));
+  renderTasks(); renderMyTasks(); loadStats();
+}
+
+async function loadLeaderboard(){
+  const r=await fetch('/api/leaderboard'); const lb=await r.json();
+  document.getElementById('leaderboard').innerHTML=lb.map(u=>`
+    <div class="flex items-center gap-3 bg-white/5 border border-white/5 rounded-xl px-3 py-2.5">
+      <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${u.rank===1?'bg-amber-400 text-black':u.rank===2?'bg-white/20':'bg-white/10'}">${u.rank}</div>
+      <img src="https://i.pravatar.cc/40?img=${u.rank+4}" class="w-8 h-8 rounded-full">
+      <div class="flex-1 min-w-0"><div class="font-semibold text-sm truncate">${u.name}</div><div class="text-xs text-white/50">${u.completed} completed</div></div>
+      <div class="text-right"><div class="font-bold text-sm text-emerald-400">₹${u.earned.toLocaleString()}</div><div class="text-[11px] text-white/40">earned</div></div>
+    </div>
+  `).join('');
+}
+
+function setCategory(c){
+  currentCat=c;
+  document.querySelectorAll('.cat-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.cat===c);
+    if(b.dataset.cat===c){b.className='cat-btn active whitespace-nowrap px-4 py-2 rounded-full bg-white text-black font-bold text-sm'}
+    else {b.className='cat-btn whitespace-nowrap px-4 py-2 rounded-full bg-white/5 border border-white/10 font-medium text-sm hover:bg-white/10'}
+  });
+  loadTasks();
+}
+function setStatusFilter(s){
+  currentStatus=s;
+  document.querySelectorAll('.status-chip').forEach(b=>{
+    if(b.dataset.status===s){b.className='status-chip active px-4 py-1.5 rounded-full text-sm font-semibold bg-white text-black'}
+    else {b.className='status-chip px-4 py-1.5 rounded-full text-sm font-medium text-white/70 hover:text-white'}
+  });
+  loadTasks();
+}
+
+let searchTimer;
+function debouncedSearch(){ clearTimeout(searchTimer); searchTimer=setTimeout(loadTasks,300) }
+
+function formatDate(iso){
+  const d=new Date(iso); const now=new Date(); const diff=(d-now)/86400000;
+  if(diff<0) return 'Expired';
+  if(diff<1) return 'Ends today';
+  if(diff<2) return 'Ends tomorrow';
+  return `${Math.ceil(diff)} days left`;
+}
+
+function statusBadge(s){
+  if(s==='open') return `<span class="bg-emerald-500 text-black text-[11px] font-extrabold px-2.5 py-1 rounded-full">● OPEN</span>`;
+  if(s==='claimed') return `<span class="bg-amber-400 text-black text-[11px] font-extrabold px-2.5 py-1 rounded-full">◐ IN PROGRESS</span>`;
+  if(s==='submitted') return `<span class="bg-cyan-400 text-black text-[11px] font-extrabold px-2.5 py-1 rounded-full">◎ REVIEW</span>`;
+  if(s==='completed') return `<span class="bg-white/10 border border-white/20 text-white text-[11px] font-extrabold px-2.5 py-1 rounded-full">✓ COMPLETED</span>`;
+}
+
+function renderTasks(){
+  const grid=document.getElementById('taskGrid');
+  const empty=document.getElementById('emptyState');
+  if(!tasks.length){ grid.innerHTML=''; empty.classList.remove('hidden'); return }
+  empty.classList.add('hidden');
+  grid.innerHTML=tasks.map(t=>`
+    <div class="bg-[#111827] border border-white/10 rounded-2xl p-4 card-hover cursor-pointer flex flex-col" onclick="openTask('${t.id}')">
+      <div class="flex items-start justify-between gap-3">
+        <span class="text-xs font-bold tracking-widest bg-white/10 border border-white/10 px-2.5 py-1 rounded-full">${t.category.toUpperCase()}</span>
+        ${statusBadge(t.status)}
+      </div>
+      <h3 class="outfit font-bold text-[16px] leading-tight mt-3 line-clamp-2">${t.title}</h3>
+      <p class="text-sm text-white/55 mt-2 line-clamp-2 leading-relaxed">${t.description}</p>
+      <div class="flex flex-wrap gap-1.5 mt-3">
+        ${t.tags.map(tag=>`<span class="text-[11px] bg-white/5 border border-white/5 px-2 py-1 rounded-full text-white/60">#${tag}</span>`).join('')}
+        <span class="text-[11px] bg-violet-600/20 border border-violet-500/20 px-2 py-1 rounded-full text-violet-300">${t.guide.length} steps guide</span>
+      </div>
+      <div class="flex items-center gap-2 mt-4 bg-white/5 border border-white/5 rounded-xl p-2.5">
+        <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-xs">${t.postedBy.avatar}</div>
+        <div class="flex-1 min-w-0"><div class="text-xs font-semibold truncate">${t.postedBy.name}</div><div class="text-[11px] text-white/50">${new Date(t.createdAt).toLocaleDateString()} • ${t.difficulty}</div></div>
+        <div class="text-right"><div class="outfit font-extrabold text-lg leading-none text-emerald-400">₹${t.reward}</div><div class="text-[11px] text-white/40">${formatDate(t.deadline)}</div></div>
+      </div>
+      <div class="mt-3 flex gap-2">
+        ${t.status==='open'?`<button onclick="event.stopPropagation(); claimTask('${t.id}')" class="flex-1 bg-gradient-to-r from-violet-600 to-indigo-600 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-1.5"><i class="ri-hand-heart-line"></i> Claim & Start</button><button onclick="event.stopPropagation(); openTask('${t.id}')" class="px-4 bg-white/10 border border-white/10 rounded-xl font-semibold text-sm">Guide</button>`:
+          t.status==='claimed'?`<div class="flex-1 bg-amber-400 text-black py-2.5 rounded-xl font-bold text-sm text-center">Claimed by ${t.claimedBy?.name}</div><button onclick="event.stopPropagation(); openTask('${t.id}')" class="px-4 bg-white/10 border border-white/10 rounded-xl font-semibold text-sm">View</button>`:
+          t.status==='submitted'?`<div class="flex-1 bg-cyan-400 text-black py-2.5 rounded-xl font-bold text-sm text-center">Under Review</div><button onclick="event.stopPropagation(); openTask('${t.id}')" class="px-4 bg-white/10 border border-white/10 rounded-xl font-semibold text-sm">Proof</button>`:
+          `<div class="flex-1 bg-white/10 border border-white/10 py-2.5 rounded-xl font-bold text-sm text-center text-white/70">✓ Completed</div><button onclick="event.stopPropagation(); openTask('${t.id}')" class="px-4 bg-white text-black rounded-xl font-bold text-sm">Details</button>`
+        }
+      </div>
+    </div>
+  `).join('');
+}
+
+async function openTask(id){
+  const r=await fetch('/api/tasks/'+id); const t=await r.json();
+  const modal=document.getElementById('taskModal'); const c=document.getElementById('modalContent');
+  const isOwner = t.postedBy.id===user.id;
+  const isClaimer = t.claimedBy?.id===user.id;
+  c.innerHTML=`
+    <div class="relative p-6 pb-4 bg-gradient-to-br from-violet-600/20 to-cyan-500/10 border-b border-white/10">
+      <button onclick="closeTask()" class="absolute right-4 top-4 w-9 h-9 rounded-full bg-white/10 flex items-center justify-center"><i class="ri-close-line text-xl"></i></button>
+      <div class="flex flex-wrap items-center gap-2 pr-10">
+        <span class="text-xs font-bold tracking-widest bg-white text-black px-3 py-1 rounded-full">${t.category}</span>
+        ${statusBadge(t.status)}
+        <span class="text-xs bg-white/10 border border-white/10 px-2.5 py-1 rounded-full">${t.difficulty}</span>
+      </div>
+      <h2 class="outfit font-extrabold text-[22px] leading-tight mt-4 pr-4">${t.title}</h2>
+      <div class="flex flex-wrap gap-2 mt-3">
+        ${t.tags.map(x=>`<span class="text-xs bg-white/10 px-2.5 py-1 rounded-full">#${x}</span>`).join('')}
+      </div>
+      <div class="flex items-center gap-3 mt-5">
+        <div class="flex items-center gap-2 bg-[#111827] border border-white/10 rounded-full pl-1 pr-3 py-1">
+          <div class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-xs">${t.postedBy.avatar}</div>
+          <span class="text-sm font-semibold">${t.postedBy.name}</span><span class="text-xs text-white/40">• Poster</span>
+        </div>
+        ${t.claimedBy?`<div class="flex items-center gap-2 bg-amber-400 text-black rounded-full pl-1 pr-3 py-1"><div class="w-7 h-7 rounded-full bg-black text-amber-400 flex items-center justify-center font-bold text-xs">${t.claimedBy.avatar}</div><span class="text-sm font-bold">${t.claimedBy.name}</span><span class="text-xs">• Worker</span></div>`:''}
+      </div>
+    </div>
+    <div class="p-6 grid md:grid-cols-[1.4fr_0.9fr] gap-6">
+      <div>
+        <h4 class="outfit font-bold flex items-center gap-2"><i class="ri-file-text-line text-violet-400"></i> Description</h4>
+        <p class="text-sm text-white/70 leading-relaxed mt-2 bg-white/5 border border-white/5 rounded-xl p-4">${t.description}</p>
+
+        <h4 class="outfit font-bold flex items-center gap-2 mt-6"><i class="ri-list-check text-cyan-400"></i> Step-by-Step Guide <span class="text-xs bg-violet-600 px-2 py-1 rounded-full">${t.guide.length} steps</span></h4>
+        <div class="mt-3 space-y-2">
+          ${t.guide.map((step,i)=>`<div class="flex gap-3 bg-white/5 border border-white/5 rounded-xl p-3"><span class="w-7 h-7 rounded-full bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center font-bold text-xs shrink-0">${i+1}</span><span class="text-sm leading-relaxed">${step}</span></div>`).join('')}
+        </div>
+
+        ${t.proof?`
+          <h4 class="outfit font-bold flex items-center gap-2 mt-6"><i class="ri-image-line text-emerald-400"></i> Submitted Proof (Screenshot)</h4>
+          <div class="mt-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+            ${t.proof.screenshot?`<img src="${t.proof.screenshot}" class="w-full rounded-xl border border-white/10 max-h-[320px] object-contain bg-black">`:''}
+            <div class="text-sm mt-3 bg-black/30 rounded-xl p-3">${t.proof.note||'No note'}</div>
+            <div class="text-xs text-white/40 mt-2">Submitted ${new Date(t.proof.submittedAt).toLocaleString()}</div>
+          </div>
+        `:''}
+      </div>
+      <div class="space-y-4">
+        <div class="bg-[#111827] border border-white/10 rounded-2xl p-4">
+          <div class="text-xs tracking-widest font-bold text-white/40">REWARD</div>
+          <div class="outfit font-extrabold text-3xl text-emerald-400">₹${t.reward}</div>
+          <div class="text-xs text-white/50">Paid on approval • No fees</div>
+          <div class="mt-3 flex items-center gap-2 text-xs">
+            <i class="ri-time-line text-white/40"></i> ${formatDate(t.deadline)} • ${new Date(t.deadline).toLocaleDateString()}
+          </div>
+          <div class="mt-4 space-y-2">
+            ${t.status==='open' && !isOwner ? `<button onclick="claimTask('${t.id}'); closeTask()" class="w-full bg-gradient-to-r from-violet-600 to-indigo-600 py-3 rounded-xl font-bold flex items-center justify-center gap-2"><i class="ri-hand-heart-line"></i> Claim This Task</button>` : ''}
+            ${t.status==='open' && isOwner ? `<div class="w-full bg-white/5 border border-white/10 py-3 rounded-xl font-semibold text-center text-sm">This is your posted task</div><button onclick="deleteTask('${t.id}')" class="w-full bg-red-500/10 border border-red-500/20 text-red-400 py-2.5 rounded-xl font-bold text-sm">Delete Task</button>` : ''}
+            ${t.status==='claimed' && isClaimer ? `
+              <div class="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+                <div class="font-bold text-sm flex items-center gap-2"><i class="ri-tools-line"></i> Complete karo</div>
+                <div class="text-xs text-white/60 mt-1">Guide follow karo, phir niche screenshot upload karo</div>
+              </div>
+              <div class="space-y-2">
+                <label class="text-xs font-bold">UPLOAD SCREENSHOT PROOF *</label>
+                <div id="dropZone" onclick="document.getElementById('proofFile').click()" class="border-2 border-dashed border-white/15 rounded-xl p-4 text-center cursor-pointer hover:border-violet-500/50 bg-white/5">
+                  <i class="ri-image-add-line text-2xl text-white/40"></i>
+                  <div class="text-sm font-semibold mt-1">Click to upload screenshot</div>
+                  <div class="text-xs text-white/40">PNG/JPG • Proof of work</div>
+                  <img id="previewImg" class="hidden w-full mt-3 rounded-xl max-h-[200px] object-contain">
+                </div>
+                <input type="file" id="proofFile" accept="image/*" class="hidden" onchange="previewProof(event)">
+                <textarea id="proofNote" rows="2" placeholder="Kya kaam kiya? Brief note likho..." class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm"></textarea>
+                <button onclick="submitProof('${t.id}')" class="w-full bg-emerald-500 text-black py-3 rounded-xl font-bold flex items-center justify-center gap-2"><i class="ri-checkbox-circle-line"></i> Submit for Review</button>
+                <button onclick="abandonTask('${t.id}')" class="w-full bg-white/5 border border-white/10 py-2.5 rounded-xl font-semibold text-sm">Abandon Task</button>
+              </div>
+            ` : ''}
+            ${t.status==='claimed' && !isClaimer && !isOwner ? `<div class="w-full bg-amber-500/10 border border-amber-500/20 py-3 rounded-xl font-bold text-center text-sm">⚡ Claimed by ${t.claimedBy.name}</div>` : ''}
+            ${t.status==='submitted' && isOwner ? `
+              <div class="bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-3 text-sm"><b>Review karo:</b> Worker ne proof submit kiya hai. Approve karne par ₹${t.reward} worker ko milega.</div>
+              <button onclick="verifyTask('${t.id}','approve')" class="w-full bg-emerald-500 text-black py-3 rounded-xl font-bold flex items-center justify-center gap-2"><i class="ri-check-line"></i> Approve & Pay ₹${t.reward}</button>
+              <button onclick="verifyTask('${t.id}','reject')" class="w-full bg-red-500/10 border border-red-500/20 text-red-300 py-2.5 rounded-xl font-bold text-sm">Reject — Send Back</button>
+            ` : ''}
+            ${t.status==='submitted' && isClaimer ? `<div class="w-full bg-cyan-500/10 border border-cyan-500/20 py-3 rounded-xl font-bold text-center text-sm">⏳ Under review by poster</div>` : ''}
+            ${t.status==='completed' ? `<div class="w-full bg-emerald-500 text-black py-3 rounded-xl font-bold text-center">✓ Completed & Paid</div>` : ''}
+          </div>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-2xl p-4">
+          <div class="text-xs font-bold tracking-widest text-white/40">TASK INFO</div>
+          <div class="mt-3 space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-white/50">Task ID</span><span class="font-mono font-bold">${t.id}</span></div>
+            <div class="flex justify-between"><span class="text-white/50">Posted</span><span>${new Date(t.createdAt).toLocaleDateString()}</span></div>
+            <div class="flex justify-between"><span class="text-white/50">Category</span><span class="font-semibold">${t.category}</span></div>
+            <div class="flex justify-between"><span class="text-white/50">Difficulty</span><span class="px-2 py-0.5 rounded-full bg-white/10 text-xs font-bold">${t.difficulty}</span></div>
+          </div>
+        </div>
+        <div class="bg-gradient-to-br from-violet-600 to-indigo-600 rounded-2xl p-4 text-white">
+          <div class="font-bold flex items-center gap-2"><i class="ri-shield-check-line"></i> Safe & Trusted</div>
+          <div class="text-xs leading-relaxed mt-1 text-white/80">Har submission screenshot proof ke saath aata hai. Poster approve kare bina payment nahi hota. Fair for both sides.</div>
+        </div>
+      </div>
+    </div>
+  `;
+  modal.classList.remove('hidden'); document.body.style.overflow='hidden';
+}
+function closeTask(){ document.getElementById('taskModal').classList.add('hidden'); document.body.style.overflow='' }
+
+function previewProof(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const img=document.getElementById('previewImg');
+    img.src=reader.result; img.classList.remove('hidden');
+    img.dataset.base64=reader.result;
+  };
+  reader.readAsDataURL(file);
+}
+let proofBase64='';
+document.addEventListener('change', e=>{
+  if(e.target.id==='proofFile'){
+    const file=e.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      proofBase64=reader.result;
+      const img=document.getElementById('previewImg');
+      if(img){ img.src=reader.result; img.classList.remove('hidden');}
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+async function claimTask(id){
+  const res=await fetch('/api/tasks/'+id+'/claim',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:user.id, userName:user.name})});
+  const j=await res.json();
+  if(!res.ok){ toast(j.error||'Failed', false); return }
+  toast('Task claimed! Guide follow karo aur screenshot submit karo');
+  loadTasks(); if(document.getElementById('taskModal').classList.contains('hidden')===false) openTask(id);
+}
+async function submitProof(id){
+  const note=document.getElementById('proofNote').value;
+  if(!proofBase64){ toast('Screenshot upload karo!', false); return }
+  const res=await fetch('/api/tasks/'+id+'/submit',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({userId:user.id, screenshot:proofBase64, note})});
+  const j=await res.json();
+  if(!res.ok){ toast(j.error, false); return }
+  proofBase64=''; toast('Proof submitted! Poster review karega');
+  closeTask(); loadTasks();
+}
+async function verifyTask(id, action){
+  const res=await fetch('/api/tasks/'+id+'/verify',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action})});
+  if(!res.ok){ toast('Failed', false); return }
+  toast(action==='approve'?'Approved & Paid! 🎉':'Sent back to worker');
+  closeTask(); loadTasks();
+}
+async function abandonTask(id){
+  await fetch('/api/tasks/'+id+'/abandon',{method:'POST'});
+  toast('Task abandoned'); closeTask(); loadTasks();
+}
+async function deleteTask(id){
+  if(!confirm('Delete this task?')) return;
+  await fetch('/api/tasks/'+id,{method:'DELETE'});
+  toast('Task deleted'); closeTask(); loadTasks();
+}
+
+// Post modal
+function openPostModal(){ document.getElementById('postModal').classList.remove('hidden'); document.body.style.overflow='hidden'; document.getElementById('p_deadline').valueAsDate=new Date(Date.now()+3*86400000); }
+function closePostModal(){ document.getElementById('postModal').classList.add('hidden'); document.body.style.overflow='' }
+
+async function submitPost(e){
+  e.preventDefault();
+  const body={
+    title: document.getElementById('p_title').value,
+    category: document.getElementById('p_category').value,
+    reward: document.getElementById('p_reward').value,
+    difficulty: document.getElementById('p_difficulty').value,
+    deadline: document.getElementById('p_deadline').value ? new Date(document.getElementById('p_deadline').value).toISOString() : new Date(Date.now()+3*86400000).toISOString(),
+    description: document.getElementById('p_desc').value,
+    guide: document.getElementById('p_guide').value.split('\n').filter(s=>s.trim()),
+    tags: document.getElementById('p_tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    postedBy: {id:user.id, name:user.name, avatar:user.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()}
+  };
+  const res=await fetch('/api/tasks',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+  if(!res.ok){ toast('Failed', false); return }
+  toast('Task published globally! 🚀'); closePostModal(); e.target.reset(); loadTasks();
+}
+
+// My tasks sidebar rendering
+function renderMyTasks(){
+  const list=document.getElementById('myTasksList');
+  // filter for demo: posted by user or claimed by user
+  const posted = tasks.filter(t=>t.postedBy.id===user.id);
+  const claimed = tasks.filter(t=>t.claimedBy?.id===user.id && t.status!=='completed');
+  const completed = tasks.filter(t=>t.claimedBy?.id===user.id && t.status==='completed' || t.postedBy.id===user.id && t.status==='completed');
+  document.getElementById('myPostedCount').textContent=posted.length;
+  document.getElementById('myClaimedCount').textContent=claimed.length;
+  document.getElementById('myCompletedCount').textContent=tasks.filter(t=>t.claimedBy?.id===user.id && t.status==='completed').length;
+  const allMy = [...posted, ...claimed].slice(0,4);
+  if(!allMy.length){
+    list.innerHTML=`<div class="text-center py-6 bg-white/5 rounded-xl border border-dashed border-white/10"><div class="text-sm font-semibold">No tasks yet</div><div class="text-xs text-white/50 mt-1">Post karo ya claim karo</div></div>`;
+    return;
+  }
+  list.innerHTML=allMy.map(t=>`
+    <div onclick="openTask('${t.id}')" class="bg-white/5 border border-white/5 rounded-xl p-3 cursor-pointer hover:bg-white/10 flex gap-3">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center text-xs font-bold shrink-0">${t.category[0]}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-semibold truncate leading-tight">${t.title}</div>
+        <div class="text-xs text-white/50 flex items-center gap-2 mt-1"><span class="bg-white/10 px-1.5 py-0.5 rounded-full text-[10px] font-bold">${t.status.toUpperCase()}</span> ₹${t.reward}</div>
+      </div>
+      <i class="ri-arrow-right-s-line text-white/30 mt-2"></i>
+    </div>
+  `).join('');
+}
+
+function showMyTasks(filter){
+  const drawer=document.getElementById('myDrawer'); const content=document.getElementById('drawerContent'); const title=document.getElementById('drawerTitle');
+  drawer.classList.remove('hidden');
+  let list=[];
+  if(filter==='posted'){ title.textContent='My Posted Tasks'; list=tasks.filter(t=>t.postedBy.id===user.id); }
+  if(filter==='claimed'){ title.textContent='My Claimed Tasks'; list=tasks.filter(t=>t.claimedBy?.id===user.id); }
+  if(filter==='submitted'){ title.textContent='Pending Review'; list=tasks.filter(t=>t.status==='submitted' && (t.postedBy.id===user.id || t.claimedBy?.id===user.id)); }
+  if(filter==='completed'){ title.textContent='Completed'; list=tasks.filter(t=>t.status==='completed'); }
+  if(!list.length) content.innerHTML=`<div class="text-center py-12"><div class="text-4xl">📭</div><div class="font-bold mt-2">No tasks here</div><div class="text-sm text-white/50">Is category me koi task nahi hai</div></div>`;
+  else content.innerHTML=list.map(t=>`
+    <div onclick="openTask('${t.id}'); closeDrawer()" class="bg-[#111827] border border-white/10 rounded-2xl p-4 cursor-pointer hover:border-violet-500/30">
+      <div class="flex items-center gap-2">${statusBadge(t.status)}<span class="text-xs bg-white/10 px-2 py-1 rounded-full">${t.category}</span></div>
+      <div class="font-bold mt-2 leading-tight">${t.title}</div>
+      <div class="text-sm text-white/50 mt-1 line-clamp-2">${t.description}</div>
+      <div class="flex items-center justify-between mt-3">
+        <span class="font-extrabold text-emerald-400">₹${t.reward}</span>
+        <span class="text-xs text-white/40">${formatDate(t.deadline)}</span>
+      </div>
+      ${t.guide?`<div class="mt-3 bg-white/5 rounded-xl p-3"><div class="text-xs font-bold tracking-widest text-white/40">GUIDE</div><div class="text-xs mt-1 leading-relaxed text-white/70">${t.guide.slice(0,2).join(' • ')}${t.guide.length>2?' • ...':''}</div></div>`:''}
+      ${t.proof && t.proof.screenshot?`<img src="${t.proof.screenshot}" class="w-full mt-3 rounded-xl border border-white/10 max-h-[180px] object-contain bg-black">`:''}
+    </div>
+  `).join('');
+}
+function closeDrawer(){ document.getElementById('myDrawer').classList.add('hidden') }
+
+function toggleProfile(){ document.getElementById('profileDropdown').classList.toggle('hidden') }
+function updateUser(){
+  const name=document.getElementById('userNameInput').value.trim()||'Aap';
+  user.name=name; user.avatar=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  toast('Profile updated: '+name); document.getElementById('profileDropdown').classList.add('hidden'); loadTasks();
+}
+document.addEventListener('click', e=>{
+  const dd=document.getElementById('profileDropdown');
+  if(!e.target.closest('button') || !e.target.closest('button').onclick?.toString().includes('toggleProfile')){
+    // keep simple: if click outside dropdown and not toggle, hide
+    if(!e.target.closest('#profileDropdown') && !e.target.closest('[onclick="toggleProfile()"]')) dd.classList.add('hidden');
+  }
+});
+
+// close modals on outside click
+document.getElementById('taskModal').addEventListener('click', e=>{ if(e.target.id==='taskModal') closeTask() });
+document.getElementById('postModal').addEventListener('click', e=>{ if(e.target.id==='postModal') closePostModal() });
+
+// init
+loadTasks(); loadLeaderboard();
+</script>
+</body>
+</html>
