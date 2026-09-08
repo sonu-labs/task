@@ -20,12 +20,15 @@ from telegram.ext import (
 )
 
 # ================== CONFIG - TOKEN HARDCODED ==================
-# Yahan apna bot token paste karo — @BotFather se /newbot karke milega
-# Example: 1234567890:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsaw
-BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN_HERE"  # <-- yahan hardcode token daal do
+# BotFather se liya hua token hardcoded hai — yahan direct pada hai
+BOT_TOKEN = "8857611106:AAGnI9_myVw2mItmLYslUClFGZ8t00DnmLE"  # hardcoded token
+# Admin user id (full access)
+ADMIN_ID = 8907752103
+ADMIN_IDS = [8907752103]
 
-# Agar env me hai to wohi use karo, nahi to hardcoded
+# Env override bhi support hai (optional)
 BOT_TOKEN = os.environ.get("BOT_TOKEN", BOT_TOKEN)
+ADMIN_ID = int(os.environ.get("ADMIN_ID", ADMIN_ID))
 
 DATA_FILE = "tasks_data.json"
 CATEGORIES = ["Design","Coding","Writing","Marketing","Video","Data Entry","Research","Testing","AI Training","Translation","Other"]
@@ -122,12 +125,15 @@ user_submit_draft = {}  # user_id -> {task_id}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     u = update.effective_user
+    is_adm = is_admin(u.id)
+    admin_badge = "\n👑 *Admin access granted* — /admin se panel kholo\n" if is_adm else ""
     await update.message.reply_text(
         f"👋 *Namaste {u.first_name}!* — TaskHub Global me swagat hai\n\n"
         "🌍 *Global Task Marketplace*\n"
         "• Koi bhi kaam *post karo* — Design, Coding, Writing, Testing, AI Training… sab chalega\n"
         "• Dusron ka task *claim karke* guide follow karo, *screenshot* bhejo, *₹ earn* karo\n"
-        "• Har task me *step-by-step guide + screenshot proof* mandatory hai\n\n"
+        "• Har task me *step-by-step guide + screenshot proof* mandatory hai"
+        f"{admin_badge}\n"
         "👇 Neeche buttons se shuru karo:",
         parse_mode="Markdown",
         reply_markup=main_keyboard()
@@ -138,9 +144,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/post — Naya task post karo\n"
         "/mytasks — Tumhare posted / claimed tasks\n"
         "/leaderboard — Top workers\n"
-        "/help — Full help",
+        "/help — Full help" + ("\n/admin — Admin panel" if is_adm else ""),
         parse_mode="Markdown"
     )
+    # Auto notify admin about new user (optional)
+    try:
+        if not is_adm:
+            await context.bot.send_message(chat_id=ADMIN_ID, text=f"👤 New user started bot:\n{u.full_name} (@{u.username}) ID:{u.id}\nLang:{u.language_code}")
+    except:
+        pass
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -162,6 +174,9 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="Markdown"
     )
 
+def is_admin(user_id: int) -> bool:
+    return user_id in ADMIN_IDS or user_id == ADMIN_ID
+
 async def leaderboard_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lb = [
         ("🥇 Rohan Dev", 42, 12400),
@@ -175,6 +190,124 @@ async def leaderboard_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         txt+=f"{name} — {comp} tasks • ₹{earn}\n"
     txt+="\n_Tum Rank #2 pe ho — 18 tasks done!_"
     await update.message.reply_text(txt, parse_mode="Markdown")
+
+# ---------- Admin Panel ----------
+async def admin_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        await update.message.reply_text("❌ Ye command sirf Admin ke liye hai.")
+        return
+    data=load_data()
+    total=len(data["tasks"])
+    open_c=len([t for t in data["tasks"] if t["status"]=="open"])
+    claimed=len([t for t in data["tasks"] if t["status"]=="claimed"])
+    submitted=len([t for t in data["tasks"] if t["status"]=="submitted"])
+    completed=len([t for t in data["tasks"] if t["status"]=="completed"])
+    txt=(
+        f"👑 *Admin Panel* — ID: `{ADMIN_ID}`\n\n"
+        f"📊 *Stats:*\n"
+        f"Total: {total} | Open: {open_c} | Claimed: {claimed} | Review: {submitted} | Done: {completed}\n\n"
+        f"*Admin Commands:*\n"
+        f"/admin_stats — Full stats + data dump\n"
+        f"/admin_tasks — Saare tasks list (admin view)\n"
+        f"/admin_approve <id> — Koi bhi task force approve\n"
+        f"/admin_delete <id> — Koi bhi task delete\n"
+        f"/broadcast <msg> — Sab users ko broadcast (next update me)\n\n"
+        f"Bot Token: `{BOT_TOKEN[:6]}...{BOT_TOKEN[-4:]}` (hardcoded)\n"
+    )
+    kb=InlineKeyboardMarkup([
+        [InlineKeyboardButton("📊 Stats", callback_data="admin:stats"), InlineKeyboardButton("📋 All Tasks", callback_data="admin:tasks")],
+        [InlineKeyboardButton("🔄 Refresh", callback_data="admin:refresh")],
+    ])
+    await update.message.reply_text(txt, parse_mode="Markdown", reply_markup=kb)
+
+async def admin_stats_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q=update.callback_query
+    await q.answer()
+    if not is_admin(q.from_user.id):
+        await q.answer("Not admin", show_alert=True)
+        return
+    data=load_data()
+    # show all tasks raw summary
+    txt="📊 *Admin Stats — Detailed*\n\n"
+    for t in data["tasks"][:10]:
+        txt+=f"`{t['id']}` {t['status']} • {t['category']} • ₹{t['reward']} • {t['title'][:30]}\n"
+    if len(data["tasks"])>10:
+        txt+=f"\n...and {len(data['tasks'])-10} more\n"
+    await q.message.reply_text(txt, parse_mode="Markdown")
+
+async def admin_tasks_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q=update.callback_query
+    await q.answer()
+    if not is_admin(q.from_user.id):
+        return
+    data=load_data()
+    # show with admin controls
+    for t in data["tasks"][:8]:
+        kb=InlineKeyboardMarkup([
+            [InlineKeyboardButton("👁️ View", callback_data=f"view:{t['id']}"), InlineKeyboardButton("🗑️ Delete", callback_data=f"admin_del:{t['id']}")],
+            [InlineKeyboardButton("✅ Force Approve", callback_data=f"admin_approve:{t['id']}")]
+        ])
+        await q.message.reply_text(format_task_short(t), parse_mode="Markdown", reply_markup=kb)
+
+async def admin_callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q=update.callback_query
+    await q.answer()
+    if not is_admin(q.from_user.id):
+        await q.answer("Not admin", show_alert=True)
+        return
+    data_str=q.data
+    if data_str=="admin:stats":
+        await admin_stats_callback(update, context)
+    elif data_str=="admin:tasks":
+        await admin_tasks_callback(update, context)
+    elif data_str=="admin:refresh":
+        await q.message.reply_text("🔄 Refreshed — /admin dobara bhejo")
+    elif data_str.startswith("admin_del:"):
+        tid=data_str.split(":")[1]
+        data=load_data()
+        data["tasks"]=[x for x in data["tasks"] if x["id"]!=tid]
+        save_data(data)
+        await q.edit_message_text(f"🗑️ Deleted {tid} (by admin)")
+    elif data_str.startswith("admin_approve:"):
+        tid=data_str.split(":")[1]
+        data=load_data()
+        t=find_task(tid, data)
+        if t:
+            t["status"]="completed"
+            save_data(data)
+            await q.edit_message_text(f"✅ Force approved {tid} — {t['title']}")
+
+async def admin_delete_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: /admin_delete t1")
+        return
+    tid=context.args[0]
+    data=load_data()
+    before=len(data["tasks"])
+    data["tasks"]=[x for x in data["tasks"] if x["id"]!=tid]
+    if len(data["tasks"])==before:
+        await update.message.reply_text("Not found")
+    else:
+        save_data(data)
+        await update.message.reply_text(f"🗑️ Deleted {tid} (admin)")
+
+async def admin_approve_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id):
+        return
+    if not context.args:
+        await update.message.reply_text("Usage: /admin_approve t1")
+        return
+    tid=context.args[0]
+    data=load_data()
+    t=find_task(tid, data)
+    if not t:
+        await update.message.reply_text("Not found")
+        return
+    t["status"]="completed"
+    save_data(data)
+    await update.message.reply_text(f"✅ Force approved {tid}")
 
 # ---------- Browse tasks ----------
 async def tasks_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -738,6 +871,11 @@ def main():
     app.add_handler(CommandHandler("mytasks", mytasks_cmd))
     app.add_handler(CommandHandler("leaderboard", leaderboard_cmd))
     app.add_handler(CommandHandler("task", task_cmd))
+    app.add_handler(CommandHandler("admin", admin_cmd))
+    app.add_handler(CommandHandler("admin_stats", admin_cmd))
+    app.add_handler(CommandHandler("admin_tasks", admin_tasks_callback))
+    app.add_handler(CommandHandler("admin_delete", admin_delete_cmd))
+    app.add_handler(CommandHandler("admin_approve", admin_approve_cmd))
 
     # Post conversation
     post_conv = ConversationHandler(
@@ -773,6 +911,10 @@ def main():
         per_message=False
     )
     app.add_handler(submit_conv)
+
+    # Admin callbacks
+    app.add_handler(CallbackQueryHandler(admin_callback_handler, pattern=r"^admin:"))
+    app.add_handler(CallbackQueryHandler(admin_callback_handler, pattern=r"^admin_(del|approve):"))
 
     # Callbacks for browsing/viewing
     app.add_handler(CallbackQueryHandler(view_task_callback, pattern=r"^(view:|page:|change_cat$|browse:)"))
